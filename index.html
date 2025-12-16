@@ -1,121 +1,1192 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>声控计时器 by螂海</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>通用枪械激发记录仪</title>
     <style>
-        #controls, #timer, #volume-threshold, #records {
-            margin-bottom: 1em;
+        @font-face {
+            font-family: DigifaceWide;
+            src: url(./fonts/DigifaceWide\ Regular.ttf);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+        }
+        body {
+            padding: 12px;
+            background-color: #f5f7fa;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        /* 模式标签 - 移动端简化 */
+        .mode-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+            gap: 4px;
+        }
+        .mode-tab {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            background: #e9ecef;
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .mode-tab.active {
+            background: #4285F4;
+            color: white;
+        }
+        #controls {
+            margin-bottom: 1.5em;
+        }
+        /* 校准区域 - 移动端适配 + 倒计时样式 */
+        .calibration-box {
+            margin: 12px 0;
+            padding: 12px;
+            border: 1px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .calibration-btn {
+            padding: 8px 16px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 6px;
+            background: #4285F4;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+        .countdown-text {
+            color: #F56C6C;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 8px;
+            display: none;
+        }
+        .countdown-text.active {
+            display: block;
+        }
+        /* 配置面板 - 移动端流式布局 */
+        .config-panel {
+            display: block;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+        .config-label {
+            font-weight: bold;
+            color: #333;
+            margin-right: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        #sensitivity, #volume-threshold, #debounce-time {
+            width: 70px;
+            margin: 0 4px 8px 4px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        /* 震动开关样式 */
+        .vibration-switch {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .switch-label {
+            font-size: 14px;
+            color: #666;
+            margin-right: 10px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 22px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4285F4;
+        }
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+        /* 控制按钮 - 移动端全屏宽度+大触控区 */
+        .control-btn-wrap {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .control-btn {
+            width: 100%;
+            height: 60px;
+            border: none;
+            border-radius: 10px;
+            background: #4285F4;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .control-btn.secondary {
+            background: #67C23A;
+        }
+        .control-btn.danger {
+            background: #F56C6C;
+        }
+        .control-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .control-btn:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .control-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        /* 计时器 - 移动端大字体 + 状态文字样式 */
+        #timer {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+            height: 60px;
+            line-height: 60px;
+            font-family: DigifaceWide;
+        }
+        #timer.ready {
+            color: #67C23A; /* READY绿色 */
+            text-shadow: 0 0 2px #67C23A, 0 0 4px #67C23A, 0 0 6px #67C23A, 0 0 8px #67C23A; /* 设置发光效果 */
+        }
+        #timer.standby {
+            color: #E6A23C; /* STAND BY橙色 */
+            text-shadow: 0 0 2px #E6A23C, 0 0 4px #E6A23C, 0 0 6px #E6A23C, 0 0 8px #E6A23C; /* 设置发光效果 */
+        }
+        #timer.running {
+            color: red; /* 计时中黑色 */
+            text-shadow: 0 0 2px red, 0 0 4px red, 0 0 6px red, 0 0 8px red; /* 设置发光效果 */
+        }
+        /* 状态栏 - 移动端换行显示 */
+        .status-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            background: #f0f7ff;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+            gap: 8px;
+        }
+        .status-left {
+            width: 100%;
+        }
+        .status-right {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .current-mode {
+            color: #4285F4;
+            font-weight: bold;
+        }
+        .trigger-status {
+            color: #F56C6C;
+            font-weight: bold;
+            display: none;
+        }
+        .trigger-status.active {
+            display: inline;
+        }
+        .fire-count {
+            color: #4285F4;
+            font-weight: bold;
+        }
+        /* 音量条 - 移动端适配宽度 */
+        .volume-meter {
+            height: 12px;
+            width: 100%;
+            max-width: 200px;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .volume-bar {
+            height: 100%;
+            width: 0%;
+            background: #4285F4;
+            transition: width 0.05s ease;
+        }
+        .volume-bar.fire {
+            background: #F56C6C;
+            animation: pulse 0.2s ease;
+        }
+        @keyframes pulse {
+            0% { width: var(--volume-width); }
+            50% { width: calc(var(--volume-width) + 10%); }
+            100% { width: var(--volume-width); }
+        }
+        /* 记录区域 - 移动端优化 */
+        #records {
+            margin-top: 20px;
+        }
+        #records h3 {
+            margin-bottom: 10px;
+            color: #555;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            gap: 8px;
+        }
+        .record-actions {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+        .record-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #e6e6e6;
+            flex: 1;
         }
         #records ul {
             list-style-type: none;
-            padding: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 14px;
         }
         .record-time {
-            display: block;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #666;
         }
-        #myAudio {
+        .record-time.general-item {
+            background: #f0f7ff;
+            border-left: 3px solid #4285F4;
+        }
+        .record-time:last-child {
+            border-bottom: none;
+        }
+        .record-time:hover {
+            background: #f9f9f9;
+        }
+        .record-index {
+            color: #999;
+            margin-right: 4px;
+        }
+        .record-interval {
+            font-size: 12px;
+            color: #777;
+            margin-left: 4px;
+            margin-top: 4px;
+            width: 100%;
+        }
+        .record-mode-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+            color: white;
+        }
+        .tag-general {
+            background: #4285F4;
+        }
+        .record-delete {
+            color: #F56C6C;
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 1; /* 移动端始终显示删除按钮 */
+            padding: 4px 8px;
+        }
+        #myAudio, #fireAudio {
             display: none;
+        }
+        /* 快捷键提示 - 移动端简化 */
+        .shortcut-tips {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            line-height: 1.5;
+        }
+        #interval-result {
+            margin-top: 10px;
+            text-align: center;
+            color: #4285F4;
+            font-weight: bold;
+            display: none;
+            font-size: 14px;
+            padding: 8px;
+            background: #f0f7ff;
+            border-radius: 6px;
+        }
+        /* 滚动条优化 - 移动端美化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #999;
         }
     </style>
 </head>
 <body>
-    <div id="controls" style="text-align: center;">
-        <label for="threshold">音量阈值:</label>
-        <input type="number" id="volume-threshold" min="0" max="1" step="0.01" value="50">
-        <br>
-        <button id="startBtn" style="width: 50vw; height: 10vh;">开始计时</button>
-        <br>
-        <br>
-        <button id="stopBtn" disabled style="width: 50vw; height: 10vh;">停止计时</button>
-        <br>
-        <br>
-        <a href="#" target="_self" rel="noopener noreferrer"><button onclick="reloadPage()" style="width: 50vw; height: 10vh;">刷新页面</button></a>
-    </div>
-    <div id="timer" style="text-align: center;">0.00</div>
-    <div id="records" style="text-align: center;">
-        <h3>记录时刻列表:</h3>
-        <ul></ul>
+    <div class="container">
+        <!-- 仅保留通用模式标签 -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="general-tab" data-mode="general">通用枪械模式</button>
+        </div>
+
+        <div id="controls">
+            <!-- 校准区域 - 修改为采集枪械激发声音 -->
+            <div class="calibration-box" id="general-calibration">
+                <div>枪械激发声音校准（点击后10秒内激发）</div>
+                <button class="calibration-btn" id="general-calibrateBtn">点击开始校准（10秒）</button>
+                <div class="countdown-text" id="calibration-countdown">倒计时：10秒</div>
+            </div>
+
+            <!-- 只保留通用枪械配置区 -->
+            <div class="config-panel active" id="general-config">
+                <label class="config-label">灵敏度：</label>
+                <input type="number" id="sensitivity" min="1" max="10" step="1" value="8" title="通用枪械建议6-8">
+                
+                <label class="config-label">阈值：</label>
+                <input type="number" id="volume-threshold" min="0" max="255" step="1" value="50">
+                
+                <label class="config-label">防抖(ms)：</label>
+                <input type="number" id="debounce-time" min="30" max="1000" step="10" value="100" title="建议：全自动50-80ms，半自动200-500ms">
+                
+                <!-- 震动开关 -->
+                <div class="vibration-switch">
+                    <span class="switch-label">触发震动反馈：</span>
+                    <label class="switch">
+                        <input type="checkbox" id="vibration-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 控制按钮 - 移动端网格布局 -->
+            <div class="control-btn-wrap">
+                <button id="startBtn" class="control-btn">开始记录</button>
+                <button id="stopBtn" class="control-btn" disabled>停止记录</button>
+            </div>
+            <div class="control-btn-wrap">
+                <button id="clearBtn" class="control-btn secondary">清空记录</button>
+                <button id="exportBtn" class="control-btn secondary" disabled>导出记录</button>
+            </div>
+            <button onclick="reloadPage()" class="control-btn danger" style="width:100%; margin-top:8px;">重置所有</button>
+        </div>
+
+        <!-- 状态栏 - 移动端换行 -->
+        <div class="status-bar">
+            <div class="status-left">
+                当前模式：<span class="current-mode" id="current-mode">通用枪械</span> | 
+                麦克风状态：<span id="mic-status">未开启</span> | 
+                激发次数：<span class="fire-count" id="fire-count">0</span> |
+                触发状态：<span class="trigger-status" id="triggerStatus">未检测到激发</span>
+            </div>
+            <div class="status-right">
+                <span>音量检测：</span>
+                <div class="volume-meter">
+                    <div class="volume-bar" id="volumeBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 计时器显示 -->
+        <div id="timer" class="ready">READY</div>
+
+        <!-- 记录列表 -->
+        <div id="records">
+            <h3>
+                激发时刻列表 (<span id="record-count">0</span>次)
+                <div class="record-actions">
+                    <button class="record-btn" id="sort-asc">升序</button>
+                    <button class="record-btn" id="sort-desc">降序</button>
+                    <button class="record-btn" id="calc-interval">计算间隔</button>
+                </div>
+            </h3>
+            <ul id="record-list"></ul>
+            <div id="interval-result"></div>
+        </div>
+
+        <!-- 快捷键提示 - 移动端简化 -->
+        <div class="shortcut-tips">
+            操作提示：点击开始/停止 | 支持空格(开始)、ESC(停止)、Del(清空)、Ctrl+S(导出)
+        </div>
     </div>
     
-    <audio id="myAudio" src="stand by.mp3" preload="auto"></audio>
+    <audio id="myAudio" src="stand_by.mp3" preload="auto"></audio>
+    <audio id="fireAudio" src="fire_tip.mp3" preload="auto" volume="0.5"></audio>
 
     <script>
+        // 全局核心变量（仅保留通用模式）
+        let currentWorkMode = "general";
+        let audioContext = null;
+        let analyserNode = null;
+        let mediaStreamSource = null;
+        let timerId = null;
+        let currentTime = 0;
+        let recordsListElement = null;
+        let mediaStream = null;
+        const updateIntervalMs = 10; // 全局10ms高精度
+        let isAnalyzing = false;
+        let isTriggered = false;
+        let debounceTimer = null;
+        let records = [];
+        // 震动相关变量
+        let vibrationEnabled = true; // 默认开启震动
+        let vibrationSupported = 'vibrate' in navigator || 'webkitVibrate' in navigator;
+        // 校准相关新增变量
+        let calibrationTimer = null; // 校准倒计时器
+        let calibrationVolumeSamples = []; // 校准期间采集的音量样本
+        let calibrationCountdown = 10; // 校准倒计时（秒）
+        
+        // 通用枪械参数（默认阈值改为50，防抖改为100）
+        let generalParams = {
+            sensitivity: 8,
+            threshold: 50,
+            debounceTime: 100,
+            fireVolume: 0 // 新增：枪械激发的基准音量
+        };
+
+        // 刷新页面
         function reloadPage() { 
+            stopTimer();
+            // 重置计时器显示为READY
+            resetTimerDisplay();
             location.reload();
         }
-    </script>
 
-    <script>
-        let audioContext, analyserNode, mediaStreamSource, timerId, stopTime, recordsListElement;
-        let currentTime = 0;
-        const updateIntervalMs = 50;
+        // 新增：重置计时器显示为READY
+        function resetTimerDisplay() {
+            const timerEl = document.getElementById('timer');
+            timerEl.textContent = "READY";
+            timerEl.className = "ready"; // 重置样式类
+        }
 
-        async function playAndStartTimer() {
-            const audioElement = document.getElementById('myAudio');
-            audioElement.currentTime = 0;
-            audioElement.play();
+        // 新增：设置计时器为STAND BY状态
+        function setTimerToStandby() {
+            const timerEl = document.getElementById('timer');
+            timerEl.textContent = "STAND BY";
+            timerEl.className = "standby"; // 橙色样式
+        }
 
-            audioElement.onended = async () => {
-                currentTime = 0;
-                document.getElementById('timer').textContent = '0.00';
-                document.getElementById('stopBtn').disabled = false;
-                timerId = setInterval(updateTimer, updateIntervalMs);
+        // 新增：设置计时器为运行状态（显示数值）
+        function setTimerToRunning(time) {
+            const timerEl = document.getElementById('timer');
+            timerEl.textContent = time.toFixed(3);
+            timerEl.className = "running"; // 黑色样式
+        }
 
-                try {
+        // 震动反馈函数
+        function triggerVibration() {
+            // 未开启或不支持则跳过
+            if (!vibrationEnabled || !vibrationSupported) return;
+            
+            try {
+                // 短震动（100ms），适合即时反馈
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); // 震动100毫秒
+                } else if (navigator.webkitVibrate) {
+                    navigator.webkitVibrate(100); // 兼容webkit内核
+                }
+            } catch (error) {
+                console.error("震动反馈失败：", error);
+            }
+        }
+
+        // 新增：校准倒计时更新
+        function updateCalibrationCountdown() {
+            const countdownEl = document.getElementById('calibration-countdown');
+            calibrationCountdown--;
+            countdownEl.textContent = `倒计时：${calibrationCountdown}秒`;
+            
+            // 倒计时结束
+            if (calibrationCountdown <= 0) {
+                clearInterval(calibrationTimer);
+                finishFireCalibration();
+            }
+        }
+
+        // 新增：完成枪械激发声音校准
+        function finishFireCalibration() {
+            const btn = document.getElementById('general-calibrateBtn');
+            const countdownEl = document.getElementById('calibration-countdown');
+            
+            // 隐藏倒计时
+            countdownEl.classList.remove('active');
+            
+            if (calibrationVolumeSamples.length === 0) {
+                // 未采集到任何样本
+                btn.textContent = "校准失败：未检测到声音";
+                alert("校准失败！10秒内未检测到枪械激发声音，请重试");
+            } else {
+                // 计算采集到的最大音量（枪械激发的峰值）
+                const maxFireVolume = Math.max(...calibrationVolumeSamples);
+                // 保留10%余量，避免阈值过高漏检
+                const finalThreshold = Math.max(0, Math.min(maxFireVolume * 0.9, 255));
+                
+                // 更新参数
+                generalParams.fireVolume = maxFireVolume;
+                generalParams.threshold = finalThreshold;
+                // 更新输入框显示
+                document.getElementById('volume-threshold').value = Math.round(finalThreshold);
+                
+                btn.textContent = `校准完成：激发音量=${maxFireVolume.toFixed(1)} | 阈值=${finalThreshold.toFixed(1)}`;
+                alert(`校准成功！\n检测到枪械激发峰值音量：${maxFireVolume.toFixed(1)}\n自动设置阈值：${finalThreshold.toFixed(1)}`);
+            }
+            
+            // 释放校准资源
+            if (mediaStream) {
+                mediaStreamSource.disconnect();
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            // 重置校准状态
+            calibrationVolumeSamples = [];
+            calibrationCountdown = 10;
+            btn.disabled = false;
+            document.getElementById('mic-status').textContent = "未开启";
+        }
+
+        // 修改：枪械激发声音校准（原环境噪音校准改为采集激发声音）
+        async function calibrateGeneralNoise() {
+            const btn = document.getElementById('general-calibrateBtn');
+            const countdownEl = document.getElementById('calibration-countdown');
+            
+            // 禁用按钮，显示倒计时
+            btn.disabled = true;
+            btn.textContent = "正在采集激发声音...";
+            countdownEl.textContent = `倒计时：${calibrationCountdown}秒`;
+            countdownEl.classList.add('active');
+            document.getElementById('mic-status').textContent = "校准中：请在10秒内激发枪械";
+
+            try {
+                // 初始化音频上下文
+                if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     analyserNode = audioContext.createAnalyser();
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                    analyserNode.fftSize = 4096;
+                    analyserNode.smoothingTimeConstant = 0.05;
+                    
+                    // 获取麦克风流（禁用降噪等，保证原始声音）
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false,
+                            sampleRate: 48000,
+                            channelCount: 1
+                        } 
+                    });
+                    mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
                     mediaStreamSource.connect(analyserNode);
-
-                    analyserNode.fftSize = 2048;
-                    const bufferLength = analyserNode.frequencyBinCount;
-                    const dataArray = new Uint8Array(bufferLength);
-
-                    let thresholdValue = parseFloat(document.getElementById('volume-threshold').value);
-                    let lastVolume = 0;
-
-                    function analyzeVolume() {
-                        analyserNode.getByteFrequencyData(dataArray);
-                        const currentVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-                        if (currentVolume > thresholdValue) {
-                            const now = currentTime.toFixed(2);
-                            addRecord(now);
-                        }
-                        lastVolume = currentVolume;
-                        requestAnimationFrame(analyzeVolume);
-                    }
-                    analyzeVolume();
-                } catch (error) {
-                    console.error('Error accessing microphone:', error);
                 }
+
+                // 重置校准样本
+                calibrationVolumeSamples = [];
+                
+                // 启动音量采集（高频采集，保证捕捉峰值）
+                const bufferLength = analyserNode.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                // 每20ms采集一次音量
+                const sampleInterval = setInterval(() => {
+                    analyserNode.getByteFrequencyData(dataArray);
+                    const avgVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
+                    calibrationVolumeSamples.push(avgVolume);
+                }, 20);
+
+                // 启动倒计时
+                calibrationTimer = setInterval(updateCalibrationCountdown, 1000);
+                
+                // 倒计时结束后清理采样定时器
+                setTimeout(() => {
+                    clearInterval(sampleInterval);
+                }, calibrationCountdown * 1000);
+
+            } catch (error) {
+                // 校准错误处理
+                clearInterval(calibrationTimer);
+                countdownEl.classList.remove('active');
+                console.error('校准失败:', error);
+                alert("校准失败！请检查麦克风权限");
+                btn.disabled = false;
+                btn.textContent = "点击开始校准（10秒）";
+                document.getElementById('mic-status').textContent = "校准失败";
+                // 释放资源
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+                if (audioContext) {
+                    audioContext.close();
+                    audioContext = null;
+                }
+            }
+        }
+
+        // 清空记录
+        function clearRecords(keepTimer = false) {
+            if (recordsListElement) {
+                recordsListElement.innerHTML = '';
+                records = [];
+                updateRecordCount();
+                document.getElementById('interval-result').style.display = 'none';
+            }
+            if (!keepTimer) {
+                currentTime = 0;
+                // 若未在记录中，重置为READY；否则保持计时数值
+                if (!timerId) {
+                    resetTimerDisplay();
+                } else {
+                    setTimerToRunning(currentTime);
+                }
+            }
+        }
+
+        // 更新记录数量
+        function updateRecordCount() {
+            document.getElementById('record-count').textContent = records.length;
+            document.getElementById('fire-count').textContent = records.length;
+            document.getElementById('exportBtn').disabled = records.length === 0;
+        }
+
+        // 添加激发记录（含震动触发）
+        function addFireRecord(time) {
+            // 防抖逻辑
+            const debounceTime = generalParams.debounceTime;
+            if (records.length > 0) {
+                const lastTime = parseFloat(records[records.length-1].time);
+                const interval = parseFloat(time) - lastTime;
+                
+                // 通用枪械：严格防抖
+                if (interval < debounceTime / 1000) return;
+            }
+            
+            // 构建记录数据
+            const record = {
+                id: Date.now(),
+                time: time,
+                timestamp: new Date().toLocaleTimeString(),
+                mode: currentWorkMode,
+                index: records.length + 1,
+                interval: records.length > 0 ? (parseFloat(time) - parseFloat(records[records.length-1].time)).toFixed(3) : "0.000"
+            };
+            records.push(record);
+            
+            // 播放提示音
+            playFireTipSound();
+            
+            // 触发震动反馈
+            triggerVibration();
+            
+            // 仅追加单条记录，而非全量渲染
+            appendSingleRecord(record); 
+            updateRecordCount();
+        }
+
+        // 播放激发提示音
+        function playFireTipSound() {
+            const audio = document.getElementById('fireAudio');
+            audio.currentTime = 0; // 重置播放位置（避免多次触发时只播放一次）
+            audio.play().catch(e => console.log('提示音播放失败:', e));
+        }
+
+        // 全量渲染记录（初始化/排序/删除时用）
+        function renderRecords() {
+            if (!recordsListElement) return;
+            recordsListElement.innerHTML = ''; // 仅全量渲染时清空
+            
+            records.forEach(record => {
+                appendSingleRecord(record);
+            });
+        }
+
+        // 单条记录渲染（新增时仅追加，优化滚动）
+        function appendSingleRecord(record) {
+            const listItem = document.createElement('li');
+            listItem.classList.add('record-time', 'general-item');
+            listItem.dataset.id = record.id;
+            
+            // 模式标签+间隔显示 - 移动端简化
+            const modeTag = '<span class="record-mode-tag tag-general">通用</span>';
+            const intervalHtml = record.index > 1 ? 
+                `<span class="record-interval">间隔：${record.interval} 秒</span>` : '';
+
+            listItem.innerHTML = `
+                <span style="width:calc(100% - 30px);">
+                    <span class="record-index">${record.index}.</span> 
+                    ${record.time} 秒 
+                    ${modeTag}
+                    (${record.timestamp})
+                    ${intervalHtml}
+                </span>
+                <span class="record-delete" onclick="deleteRecord(${record.id})">×</span>
+            `;
+            recordsListElement.appendChild(listItem);
+            
+            // 优化滚动逻辑：仅当未到底部时平滑滚动，已到底部则直接定位
+            const list = recordsListElement;
+            // 判断是否已滚动到底部（容差10px，避免微小偏差）
+            const isAtBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 10;
+            if (isAtBottom) {
+                // 已到底部：直接定位，无动画
+                list.scrollTop = list.scrollHeight;
+            } else {
+                // 未到底部：平滑滚动到新记录（可选，也可注释掉）
+                listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // 删除单条记录
+        function deleteRecord(recordId) {
+            records = records.filter(item => item.id !== recordId);
+            // 重新计算所有记录的间隔和序号
+            records.forEach((item, index) => {
+                item.index = index + 1;
+                item.interval = index > 0 ? (parseFloat(item.time) - parseFloat(records[index-1].time)).toFixed(3) : "0.000";
+            });
+            // 删除后需全量渲染（序号变化），但保留滚动位置
+            const list = recordsListElement;
+            const scrollTop = list.scrollTop; // 保存滚动位置
+            renderRecords(); // 全量渲染
+            list.scrollTop = scrollTop; // 恢复滚动位置
+            updateRecordCount();
+            document.getElementById('interval-result').style.display = 'none';
+        }
+
+        // 排序记录
+        function sortRecords(order) {
+            if (order === 'asc') {
+                records.sort((a, b) => parseFloat(a.time) - parseFloat(b.time));
+            } else {
+                records.sort((a, b) => parseFloat(b.time) - parseFloat(a.time));
+            }
+            // 重新计算间隔
+            records.forEach((item, index) => {
+                item.interval = index > 0 ? (parseFloat(item.time) - parseFloat(records[index-1].time)).toFixed(3) : "0.000";
+            });
+            // 排序后全量渲染，保留滚动位置
+            const list = recordsListElement;
+            const scrollTop = list.scrollTop;
+            renderRecords();
+            list.scrollTop = scrollTop;
+        }
+
+        // 计算平均间隔
+        function calculateAvgInterval() {
+            if (records.length < 2) {
+                alert("至少需要2条记录才能计算间隔！");
+                document.getElementById('interval-result').style.display = 'none';
+                return;
+            }
+            
+            let totalInterval = 0;
+            let count = 0;
+            records.forEach((item, index) => {
+                if (index > 0) {
+                    totalInterval += parseFloat(item.interval);
+                    count++;
+                }
+            });
+            const avgInterval = (totalInterval / count).toFixed(3);
+            const maxInterval = Math.max(...records.map(item => parseFloat(item.interval))).toFixed(3);
+            const minInterval = Math.min(...records.map(item => parseFloat(item.interval))).toFixed(3);
+            
+            document.getElementById('interval-result').style.display = 'block';
+            document.getElementById('interval-result').textContent = 
+                `间隔统计：平均=${avgInterval}秒 | 最大=${maxInterval}秒 | 最小=${minInterval}秒（共${count}个间隔）`;
+        }
+
+        // 导出记录为CSV文件
+        function exportRecords() {
+            if (records.length === 0) {
+                alert("暂无记录可导出！");
+                return;
+            }
+
+            try {
+                // 构建CSV内容（添加BOM头解决中文乱码）
+                let csvContent = "\uFEFF序号,激发时刻(秒),与上一次间隔(秒),记录时间,模式\n";
+                records.forEach(record => {
+                    const row = [
+                        record.index,
+                        record.time,
+                        record.interval,
+                        record.timestamp,
+                        record.mode === "general" ? "通用枪械" : record.mode
+                    ].join(",");
+                    csvContent += row + "\n";
+                });
+
+                // 创建下载链接
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                
+                // 生成带时间戳的文件名
+                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                link.setAttribute("download", `枪械激发记录_${timestamp}.csv`);
+                link.style.display = "none";
+                document.body.appendChild(link);
+                
+                // 触发下载并清理
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                alert(`导出成功！共导出 ${records.length} 条记录`);
+            } catch (error) {
+                console.error("导出失败：", error);
+                alert("导出失败！请检查浏览器权限或重试");
+            }
+        }
+
+        // 音量可视化
+        function updateVolumeMeter(volume, isFire) {
+            const volumeBar = document.getElementById('volumeBar');
+            const volumePercent = Math.min(volume / 255 * 100, 100);
+            volumeBar.style.width = `${volumePercent}%`;
+            volumeBar.style.setProperty('--volume-width', `${volumePercent}%`);
+            
+            // 激发时脉冲动画
+            if (isFire) {
+                volumeBar.classList.add('fire');
+                setTimeout(() => volumeBar.classList.remove('fire'), 200);
+            }
+            
+            // 颜色分级（基于枪械激发音量）
+            const fireVolume = generalParams.fireVolume || 50; // 同步默认阈值
+            if (volume > fireVolume * 0.9) volumeBar.style.background = '#F56C6C'; // 接近激发音量
+            else if (volume > fireVolume * 0.6) volumeBar.style.background = '#E6A23C';
+            else volumeBar.style.background = '#4285F4';
+        }
+
+        // 修改：通用枪械检测算法（基于校准的激发音量）
+        function detectGeneralFire(bufferLength, dataArray) {
+            const avgVolume = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
+            // 触发条件：音量超过校准的激发阈值 + 灵敏度调整
+            const threshold = generalParams.threshold;
+            const sensitivityFactor = generalParams.sensitivity / 10;
+            const isFire = avgVolume > (threshold * sensitivityFactor);
+            return { isFire, avgVolume };
+        }
+
+        // 启动记录（核心修改：添加状态切换）
+        async function startFireRecord() {
+            if (timerId) return;
+            
+            // 第一步：立即将计时器改为STAND BY
+            setTimerToStandby();
+            
+            // 检查是否已校准（提示用户先校准）
+            if (generalParams.fireVolume === 0) {
+                if (!confirm("尚未校准枪械激发声音！是否继续？建议先校准以提高检测准确性")) {
+                    // 用户取消，重置为READY
+                    resetTimerDisplay();
+                    return;
+                }
+            }
+            
+            // 清空历史记录
+            clearRecords(true); // 保留计时器状态（STAND BY）
+            
+            // 同步当前参数
+            syncCurrentModeParams();
+            
+            // 播放准备提示音
+            const audioElement = document.getElementById('myAudio');
+            audioElement.currentTime = 0;
+            
+            try {
+                await audioElement.play();
+                document.getElementById('mic-status').textContent = "准备中（提示音播放）";
+            } catch (error) {
+                alert("提示音播放失败，将直接开始记录");
+                console.error('Audio play error:', error);
+                // 跳过提示音直接初始化检测
+                initDetection();
+                return;
+            }
+
+            // 提示音结束后初始化检测（计时开始）
+            audioElement.onended = async () => {
+                initDetection();
             };
         }
 
+        // 初始化检测逻辑（抽离复用）
+        async function initDetection() {
+            currentTime = 0;
+            // 第一步：将计时器切换为运行状态（显示0.000）
+            setTimerToRunning(currentTime);
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('mic-status').textContent = "记录中";
+
+            // 启动高精度计时器
+            timerId = setInterval(() => {
+                updateTimer();
+                // 实时更新计时器显示
+                setTimerToRunning(currentTime);
+            }, updateIntervalMs);
+
+            try {
+                // 初始化音频上下文
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 4096;
+                analyserNode.smoothingTimeConstant = 0.05;
+                
+                // 获取麦克风流
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        sampleRate: 48000,
+                        channelCount: 1
+                    } 
+                });
+                
+                mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
+                mediaStreamSource.connect(analyserNode);
+
+                // 启动音量分析
+                const bufferLength = analyserNode.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                if (!isAnalyzing) {
+                    isAnalyzing = true;
+                    analyzeVolume(bufferLength, dataArray);
+                }
+
+            } catch (error) {
+                console.error('麦克风访问失败:', error);
+                alert("麦克风访问失败！请检查权限设置");
+                document.getElementById('mic-status').textContent = "记录失败（麦克风错误）";
+                stopTimer();
+                // 重置计时器为READY
+                resetTimerDisplay();
+            }
+        }
+
+        // 同步当前参数
+        function syncCurrentModeParams() {
+            generalParams.sensitivity = parseInt(document.getElementById('sensitivity').value) || 8;
+            generalParams.threshold = parseInt(document.getElementById('volume-threshold').value) || 50; // 默认50
+            generalParams.debounceTime = parseInt(document.getElementById('debounce-time').value) || 100; // 默认100
+            // 同步震动开关状态
+            vibrationEnabled = document.getElementById('vibration-toggle').checked;
+        }
+
+        // 更新计时器
         function updateTimer() {
             currentTime += updateIntervalMs / 1000;
-            document.getElementById('timer').textContent = currentTime.toFixed(2);
         }
 
-        function addRecord(time) {
-            const listItem = document.createElement('li');
-            listItem.classList.add('record-time');
-            listItem.textContent = `时刻：${time} 秒`;
-            recordsListElement.appendChild(listItem);
-        }
-
+        // 停止记录（新增：重置计时器为READY）
         function stopTimer() {
-            clearInterval(timerId);
-            mediaStreamSource.disconnect();
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+            
+            // 停止音频分析
+            if (isAnalyzing) {
+                isAnalyzing = false;
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+                if (mediaStreamSource) {
+                    mediaStreamSource.disconnect();
+                }
+                if (audioContext) {
+                    audioContext.close();
+                    audioContext = null;
+                }
+            }
+            
             document.getElementById('stopBtn').disabled = true;
+            document.getElementById('mic-status').textContent = "已停止";
+            // 重置计时器为READY
+            resetTimerDisplay();
         }
 
+        // 音量分析主循环
+        function analyzeVolume(bufferLength, dataArray) {
+            if (!isAnalyzing) return;
+            
+            requestAnimationFrame(() => analyzeVolume(bufferLength, dataArray));
+            analyserNode.getByteFrequencyData(dataArray);
+            
+            // 仅使用通用检测算法
+            const { isFire, avgVolume } = detectGeneralFire(bufferLength, dataArray);
+            
+            // 更新音量可视化
+            updateVolumeMeter(avgVolume, isFire);
+            
+            // 处理激发事件
+            if (isFire && !isTriggered) {
+                isTriggered = true;
+                document.getElementById('triggerStatus').textContent = "检测到激发！";
+                document.getElementById('triggerStatus').classList.add('active');
+                
+                // 记录激发时间
+                addFireRecord(currentTime.toFixed(3));
+                
+                // 防抖重置
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    isTriggered = false;
+                    document.getElementById('triggerStatus').classList.remove('active');
+                }, generalParams.debounceTime);
+            }
+        }
+
+        // 初始化页面（新增：默认显示READY）
         document.addEventListener('DOMContentLoaded', () => {
-            recordsListElement = document.querySelector('#records ul');
-            document.getElementById('startBtn').addEventListener('click', playAndStartTimer);
+            recordsListElement = document.getElementById('record-list');
+            
+            // 初始化计时器显示为READY
+            resetTimerDisplay();
+            
+            // 初始化震动开关状态
+            const vibrationToggle = document.getElementById('vibration-toggle');
+            vibrationToggle.checked = vibrationEnabled;
+            // 若浏览器不支持震动API，自动禁用开关并提示
+            if (!vibrationSupported) {
+                vibrationToggle.checked = false;
+                vibrationToggle.disabled = true;
+                vibrationEnabled = false;
+                document.querySelector('.switch-label').textContent = "触发震动反馈（不支持）";
+            }
+            
+            // 按钮事件绑定
+            document.getElementById('startBtn').addEventListener('click', startFireRecord);
             document.getElementById('stopBtn').addEventListener('click', stopTimer);
+            document.getElementById('clearBtn').addEventListener('click', () => clearRecords(false));
+            document.getElementById('exportBtn').addEventListener('click', exportRecords);
+            document.getElementById('sort-asc').addEventListener('click', () => sortRecords('asc'));
+            document.getElementById('sort-desc').addEventListener('click', () => sortRecords('desc'));
+            document.getElementById('calc-interval').addEventListener('click', calculateAvgInterval);
+            // 绑定修改后的校准函数
+            document.getElementById('general-calibrateBtn').addEventListener('click', calibrateGeneralNoise);
+            
+            // 参数输入框变化时更新配置
+            document.getElementById('sensitivity').addEventListener('change', syncCurrentModeParams);
+            document.getElementById('volume-threshold').addEventListener('change', syncCurrentModeParams);
+            document.getElementById('debounce-time').addEventListener('change', syncCurrentModeParams);
+            // 震动开关变化时更新状态
+            vibrationToggle.addEventListener('change', syncCurrentModeParams);
+            
+            // 移动端触摸优化：禁止输入框外点击失焦（可选）
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                });
+            });
+            
+            // 快捷键支持（保留，适配外接键盘）
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (!timerId) startFireRecord();
+                } else if (e.code === 'Escape') {
+                    if (timerId) stopTimer();
+                } else if (e.code === 'Delete') {
+                    clearRecords(false);
+                } else if (e.ctrlKey && e.code === 'KeyS') {
+                    e.preventDefault();
+                    if (records.length > 0) exportRecords();
+                } else if (e.code === 'KeyI') {
+                    calculateAvgInterval();
+                }
+            });
         });
     </script>
 </body>
